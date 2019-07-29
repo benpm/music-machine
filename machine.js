@@ -1,7 +1,6 @@
 "use strict";
 
 const http = require("http");
-const { parse } = require("querystring");
 
 function httpHandler(req, res) {
     if (req.method == "POST") {
@@ -10,7 +9,13 @@ function httpHandler(req, res) {
             body += chunk.toString(); // convert Buffer to string
         });
         req.on("end", () => {
-            console.log(parse(body));
+            let data = null;
+            try {
+                data = JSON.parse(body)
+                console.log(data);
+            } catch (error) {
+                console.error("Could not parse!", error);
+            }
             res.end("ok");
         });
     } else {
