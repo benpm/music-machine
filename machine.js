@@ -3,9 +3,17 @@
 const express = require("express");
 const request = require("request");
 
-//Genius API search handler
+//Genius API search handlers
+function geniusSongInfo(error, response, body) {
+    let result = JSON.parse(body);
+    console.log(result.response.song.description.plain);
+}
 function geniusSearch(error, response, body) {
-    console.log(error, response, JSON.parse(body));
+    let result = JSON.parse(body);
+    let songID = result.response.hits[0].result.id;
+    request.get(`https://api.genius.com/songs/${songID}?text_format=plain&` +
+        "access_token=BTvxaxYdfn2Lc40gr2uS8703AZw4GsGJAg7UzXcAzbiIUgVPrMSAenCs0DQdzlkS",
+        geniusSongInfo);
 }
 
 //Express app
