@@ -3,6 +3,11 @@
 const express = require("express");
 const request = require("request");
 
+//Genius API search handler
+function geniusSearch(error, response, body) {
+    console.log(error, response, JSON.parse(body));
+}
+
 //Express app
 const app = express();
 
@@ -21,11 +26,16 @@ app.get("/list", (req, res) => {
 //Receive POST requests from IFTTT
 app.post("/", (req, res) => {
     console.log(req.body);
-    console.log(req.body["TrackName"]);
     recents.push(req.body);
     if (recents.length > 10)
         recents.shift();
     res.send("ok");
+
+    //Search Genius for track info
+    let searchQuery = (req.body["TrackName"] + " " + req.body["ArtistName"]).replace(" ", "%20");
+    request.get(`https://api.genius.com/search?q=${searchQuery}&` +
+        "access_token=BTvxaxYdfn2Lc40gr2uS8703AZw4GsGJAg7UzXcAzbiIUgVPrMSAenCs0DQdzlkS",
+        geniusSearch);
 });
 
 //Start the server
