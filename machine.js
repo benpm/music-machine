@@ -12,15 +12,14 @@ function sendIfReady(index) {
     song.stepsRemaining -= 1;
     if (song.stepsRemaining == 0) {
         console.log("Sending", song);
-        request({
-            url: "https://maker.ifttt.com/trigger/post_song/with/key/" + iftttKey,
-            method: "POST",
+        request.post({
+            uri: "https://maker.ifttt.com/trigger/post_song/with/key/" + iftttKey,
             headers: { "Content-Type": "application/json" },
-            json: {
+            body: JSON.stringify({
                 value1: song.trackURL,
                 value2: song.description,
                 value3: [song.artistName, song.trackName, song.trackName].concat(song.genreTags).join(",")
-            }
+            })
         });
         delete queue[index];
     }
