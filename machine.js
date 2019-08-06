@@ -1,19 +1,20 @@
 "use strict";
 
+const keys = require("./keys.json");
 const express = require("express");
 const request = require("request");
-const iftttKey = "dMvIEBpoWgEJpP2eyJj6FP";
+const port = 8000;
 var queue = {};
 var counter = 0;
 
-//Send if ready
+//Send to IFTTT tumblr recipe if ready
 function sendIfReady(index) {
     let song = queue[index];
     song.stepsRemaining -= 1;
     if (song.stepsRemaining == 0) {
         console.log("Sending", song);
         request.post({
-            uri: "https://maker.ifttt.com/trigger/post_song/with/key/" + iftttKey,
+            uri: `https://maker.ifttt.com/trigger/post_song/with/key/${keys.ifttt}`,
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 value1: song.trackURL,
@@ -51,7 +52,7 @@ function geniusSearch(index, json) {
     }
     let songID = json.response.hits[0].result.id;
     request.get(`https://api.genius.com/songs/${songID}?text_format=plain&` +
-        "access_token=BTvxaxYdfn2Lc40gr2uS8703AZw4GsGJAg7UzXcAzbiIUgVPrMSAenCs0DQdzlkS",
+        `access_token=${keys.genius}`,
         wrapHandler(geniusSongInfo, index));
 }
 
@@ -68,56 +69,67 @@ function lastfmSearch(index, json) {
     }
 }
 
-//Express app
-const app = express();
+//Main
+function main() {
+    //Express app
+    const app = express();
 
-//Keep track of recent 10 posts
-var recents = [];
+    //Keep track of recent 10 posts
+    var recents = [];
 
-//Setup the Express app
-app.use(express.json());
-app.use(express.static("public"));
+    //Setup the Express app
+    app.use(express.json());
+    app.use(express.static("public"));
 
-//Respond request
-app.get("/list", (req, res) => {
-    res.send(JSON.stringify(recents));
-});
+    //Respond request
+    app.get("/list", (req, res) => {
+        res.send(JSON.stringify(recents));
+    });
 
-//Receive POST requests from IFTTT
-app.post("/", (req, res) => {
-    console.log(req.body);
-    recents.push(req.body);
-    if (recents.length > 10)
-        recents.shift();
-    res.send("ok");
+    //Receive POST requests from IFTTT
+    app.post("/", (req, res) => {
+        console.log(req.body);
+        recents.push(req.body);
+        if (recents.length > 10)
+            recents.shift();
+        res.send("ok");
 
-    //Populate song info object
-    queue[counter] = {
-        trackName: req.body["TrackName"],
-        artistName: req.body["ArtistName"],
-        trackURL: req.body["TrackURL"],
-        albumName: req.body["AlbumName"],
-        description: `<p><b>${req.body["TrackName"]}</b> by <b>${req.body["ArtistName"]}</b></p><p>From ${req.body["AlbumName"]}</p>`,
-        genreTags: [],
-        stepsRemaining: 3
-    };
+        //Populate song info object
+        queue[counter] = {
+            trackName: req.body["TrackName"],
+            artistName: req.body["ArtistName"],
+            trackURL: req.body["TrackURL"],
+            albumName: req.body["AlbumName"],
+            description: `<p><b>${req.body["TrackName"]}</b> by <b>${req.body["ArtistName"]}</b></p><p>From ${req.body["AlbumName"]}</p>`,
+            genreTags: [],
+            stepsRemaining: 3
+        };
 
-    //Search Genius for track info
-    let searchQuery = (req.body["TrackName"] + " " + req.body["ArtistName"]).replace(" ", "%20");
-    request.get(`https://api.genius.com/search?q=${searchQuery}&` +
-        "access_token=BTvxaxYdfn2Lc40gr2uS8703AZw4GsGJAg7UzXcAzbiIUgVPrMSAenCs0DQdzlkS",
-        wrapHandler(geniusSearch, counter));
+        //Search Genius for track info
+        let searchQuery = (req.body["TrackName"] + " " + req.body["ArtistName"]).replace(" ", "%20");
+        request.get(`https://api.genius.com/search?q=${searchQuery}&` +
+            `access_token=${keys.genius}`,
+            wrapHandler(geniusSearch, counter));
 
-    //Search Last.fm for genre tags
-    let searchTrack = req.body["TrackName"].replace(" ", "+");
-    let searchArtist = req.body["ArtistName"].replace(" ", "+");
-    request.get(`http://ws.audioscrobbler.com/2.0/?method=track.gettoptags&artist=${searchArtist}&track=${searchTrack}&` +
-        "api_key=ed7b79a1342ca2f2492498c530a015f6&format=json",
-        wrapHandler(lastfmSearch, counter));
-    
-    //Increment
-    counter += 1;
-});
+        //Search Last.fm for genre tags
+        let searchTrack = req.body["TrackName"].replace(" ", "+");
+        let searchArtist = req.body["ArtistName"].replace(" ", "+");
+        request.get(`http://ws.audioscrobbler.com/2.0/?method=track.gettoptags&artist=${searchArtist}&track=${searchTrack}&` +
+            `api_key=${keys.lastfm}&format=json`,
+            wrapHandler(lastfmSearch, counter));
 
-//Start the server
-app.listen(8000);
+        //Increment
+        counter += 1;
+    });
+
+    //Start the server
+    app.listen(port);
+}
+
+//Check for keys
+if (keys["genius"] && keys["ifttt"] & keys["lastfm"]) {
+    console.error("Missing valid keys! Add your API keys to keys.json");
+} else {
+    main();
+    console.log("Serving on port", port);
+}
