@@ -39,6 +39,8 @@ function wrapHandler(handler, index) {
 
 //Genius API search handlers
 function geniusSongInfo(index, json) {
+    if (json.response.song.description.plain.length < 4)
+        return;
     let desc = json.response.song.description.plain.replace("\n\n", "<br>");
     queue[index].description += `<p>${desc}</p>`;
 }
