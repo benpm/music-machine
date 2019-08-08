@@ -47,7 +47,8 @@ function geniusSongInfo(index, json) {
 }
 function geniusSearch(index, json) {
     if (json.response.hits.length == 0) {
-        console.error(json.message);
+        console.error("ERROR GeniusSearch:", json.message);
+        sendIfReady(index);
         return;
     }
     let songID = json.response.hits[0].result.id;
@@ -59,7 +60,8 @@ function geniusSearch(index, json) {
 //Last.fm search handler
 function lastfmSearch(index, json) {
     if (json["error"]) {
-        console.error(json.message);
+        console.error("ERROR LastFM search:", json.message);
+        sendIfReady(index);
         return;
     }
 
