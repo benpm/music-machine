@@ -108,7 +108,7 @@ function main() {
         };
 
         //Search Genius for track info
-        let searchQuery = (req.body["TrackName"] + " " + req.body["ArtistName"]).replace(" ", "%20");
+        let searchQuery = (req.body["TrackName"] + " " + req.body["ArtistName"].split(", ")[0]).replace(" ", "%20");
         request.get(`https://api.genius.com/search?q=${searchQuery}&` +
             `access_token=${keys.genius}`,
             wrapHandler(geniusSearch, counter));
