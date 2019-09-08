@@ -40,9 +40,12 @@ function wrapHandler(handler, index) {
 
 //Genius API search handlers
 function geniusSongInfo(index, json) {
-    if (json.response.song.description.plain.length < 4)
+    let rawDesc = json.response.song.description.plain
+    if (rawDesc.length < 4 || !queue[index]) {
+        console.error("Genius song info failed");
         return;
-    let desc = json.response.song.description.plain.replace("\n\n", "<br>");
+    }
+    let desc = rawDesc.replace("\n\n", "<br>");
     queue[index].description += `<p>${desc}</p>`;
 }
 function geniusSearch(index, json) {
