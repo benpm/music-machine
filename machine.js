@@ -9,6 +9,8 @@ var counter = 0;
 
 //Send to IFTTT tumblr recipe if ready
 function sendIfReady(index) {
+    if (!queue[index])
+        return;
     let song = queue[index];
     song.stepsRemaining -= 1;
     if (song.stepsRemaining == 0) {
