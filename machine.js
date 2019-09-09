@@ -117,7 +117,7 @@ function main() {
             wrapHandler(geniusSearch, counter));
 
         //Search Last.fm for genre tags
-        let searchTrack = req.body["TrackName"].replace(" ", "+");
+        let searchTrack = req.body["TrackName"].replace(" ", "+").replace("&", "");
         let searchArtist = req.body["ArtistName"].replace(" ", "+");
         request.get(`http://ws.audioscrobbler.com/2.0/?method=track.gettoptags&artist=${searchArtist}&track=${searchTrack}&` +
             `api_key=${keys.lastfm}&format=json`,
