@@ -15,6 +15,7 @@ function sendIfReady(index) {
     song.stepsRemaining -= 1;
     if (song.stepsRemaining == 0) {
         console.log("Sending", song);
+        song.description += '<p>🎵 <i>Made with <a href="https://github.com/benpm/music-machine">Music Machine</a></i>🎵 </p>';
         request.post({
             uri: `https://maker.ifttt.com/trigger/post_song/with/key/${keys.ifttt}`,
             headers: { "Content-Type": "application/json" },
@@ -48,7 +49,7 @@ function geniusSongInfo(index, json) {
         return;
     }
     let desc = rawDesc.replace("\n\n", "<br>");
-    queue[index].description += `<p>${desc}</p>`;
+    queue[index].description += `<blockquote>${desc}</blockquote>`;
 }
 function geniusSearch(index, json) {
     if (json.response.hits.length == 0) {
@@ -88,9 +89,9 @@ function main() {
     app.use(express.json());
     app.use(express.static("public"));
 
-    //Respond request
+    //Respond to request for list of songs
     app.get("/list", (req, res) => {
-        res.send(JSON.stringify(recents));
+        res.send(JSON.stringify(recents, null, 4));
     });
 
     //Receive POST requests from IFTTT
@@ -107,7 +108,7 @@ function main() {
             artistName: req.body["ArtistName"],
             trackURL: req.body["TrackURL"],
             albumName: req.body["AlbumName"],
-            description: `<p><b>${req.body["TrackName"]}</b> by <b>${req.body["ArtistName"]}</b></p><p>From ${req.body["AlbumName"]}</p>`,
+            description: `<p><b>${req.body["TrackName"]}</b> by <b>${req.body["ArtistName"]}</b></p><p>From <i>${req.body["AlbumName"]}</i></p>`,
             genreTags: [],
             stepsRemaining: 3
         };
@@ -134,7 +135,7 @@ function main() {
 }
 
 //Check for keys
-if (keys["genius"] && keys["ifttt"] & keys["lastfm"]) {
+if (keys["genius"] && keys["ifttt"] && keys["lastfm"]) {
     console.error("Missing valid keys! Add your API keys to keys.json");
 } else {
     main();

@@ -27,6 +27,14 @@ The info from these sites will be used to create a nice little post on your blog
 (The post includes genre tags from Last FM and a song description from Genius)
 NOTE: The server is configured to run on port 8000, change the port as you please.
 
+## Example
+Here is what your post will look like on the Tumblr dashboard:
+
+![example of item on dash](example.png)
+
+The description is only added if one is found on the song's genius page.
+The genre tags will be added only if the song is found on lastfm.
+
 ## Dependencies
 - Express
 - Request
