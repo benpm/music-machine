@@ -136,8 +136,8 @@ function main() {
 
 //Check for keys
 if (keys["genius"] && keys["ifttt"] && keys["lastfm"]) {
-    console.error("Missing valid keys! Add your API keys to keys.json");
-} else {
     main();
     console.log("Serving on port", port);
+} else {
+    console.error("Missing valid keys! Add your API keys to keys.json");
 }
