@@ -35,8 +35,12 @@ function wrapHandler(handler, index) {
         if (error) {
             console.error(error);
         } else {
-            handler(index, JSON.parse(body));
-            sendIfReady(index);
+            try {
+                handler(index, JSON.parse(body));
+                sendIfReady(index);
+            } catch (error) {
+                console.error(`Could not parse ${body}`);
+            }
         }
     };
 }
