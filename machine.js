@@ -15,7 +15,7 @@ function sendIfReady(index) {
     song.stepsRemaining -= 1;
     if (song.stepsRemaining == 0) {
         console.log("Sending", song);
-        song.description += '<p>🎵 <i>Made with <a href="https://github.com/benpm/music-machine">Music Machine</a></i>🎵 </p>';
+        song.description += '<p><a href="https://github.com/benpm/music-machine">[🎵]</a></p>';
         request.post({
             uri: `https://maker.ifttt.com/trigger/post_song/with/key/${keys.ifttt}`,
             headers: { "Content-Type": "application/json" },
