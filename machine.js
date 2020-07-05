@@ -106,6 +106,11 @@ function main() {
             recents.shift();
         res.send("ok");
 
+        //Workaround for result being empty for some reason
+        if (!req.body) {
+            return;
+        }
+
         //Populate song info object
         queue[counter] = {
             trackName: req.body["TrackName"],
