@@ -111,6 +111,12 @@ function main() {
             return;
         }
 
+        //Empty response - something is wrong
+        if (Object.keys(req.body).length == 0) {
+            console.log("received empty response from IFTTT!");
+            return;
+        }
+
         //Populate song info object
         queue[counter] = {
             trackName: req.body["TrackName"],
