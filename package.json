@@ -7,6 +7,7 @@
     "express": "^4.17.1",
     "genius-api": "latest",
     "last-fm": "latest",
+    "prompt": "latest",
     "request": "latest",
     "spotify-web-api-node": "latest",
     "tumblr.js": "latest",
