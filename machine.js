@@ -1,158 +1,113 @@
 "use strict";
 
-const keys = require("./keys.json");
-const express = require("express");
-const request = require("request");
-const port = 8000;
-var queue = {};
-var counter = 0;
+const KEYS = require("./keys.json");
 
-//Send to IFTTT tumblr recipe if ready
-function sendIfReady(index) {
-    if (!queue[index])
-        return;
-    let song = queue[index];
-    song.stepsRemaining -= 1;
-    if (song.stepsRemaining == 0) {
-        console.log("Sending", song);
-        song.description += '<p><a href="https://github.com/benpm/music-machine">[🎵]</a></p>';
-        request.post({
-            uri: `https://maker.ifttt.com/trigger/post_song/with/key/${keys.ifttt}`,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                value1: song.trackURL,
-                value2: song.description,
-                value3: [song.artistName, song.trackName, song.trackName].concat(song.genreTags).join(",")
-            })
-        });
-        delete queue[index];
-    }
+const TumblrAPI = require("tumblr.js");
+const SpotifyAPI = require("spotify-web-api-node");
+const GeniusAPI = require("genius-api");
+const LastFmAPI = require("last-fm");
+
+const youtube = require("youtube-search");
+
+const tumblr = TumblrAPI.createClient({credentionals: KEYS.tumblr, returnPromises: true});
+const spotify = new SpotifyAPI(KEYS.spotify);
+const genius = new GeniusAPI(KEYS.genius.client_access_token);
+const lastfm = new LastFmAPI(KEYS.lastfm.api_key);
+
+
+// Frequency of polling for Spotify playlist changes
+const pollFreq = 60 * 1000;
+
+function getDescription(title, artist) {
+    return new Promise((resolve, reject) => {
+        genius.search(`${title} by ${artist}`).then((data) => {
+            console.debug(data);
+            if (data.hits.length > 0) {
+                genius.song(data.hits[0].result.id).then((data) => {
+                    console.debug(data);
+                    resolve(data.song.description);
+                }, reject);
+            } else {
+                resolve("");
+            }
+        }, reject);
+    });
 }
 
-//Handler wrapper
-function wrapHandler(handler, index) {
-    return (error, response, body) => {
-        if (error) {
-            console.error(error);
-        } else {
-            try {
-                handler(index, JSON.parse(body));
-                sendIfReady(index);
-            } catch (error) {
-                console.error(`Could not parse ${body}`);
+function getTags(title, artist) {
+    return new Promise((resolve, reject) => {
+        lastfm.trackInfo({track: title, artist}, (err, data) => {
+            if (err) {
+                reject(err);
+            } else {
+                console.debug(data);
+                resolve(data.track.toptags.map((t) => t.name));
+            }
+        });
+    });
+}
+
+function getVideo(title, artist) {
+    return new Promise((resolve, reject) => {
+        youtube(`${title} ${artist}`, {
+            key: KEYS.youtube.api_key,
+            maxResults: 1,
+            type: "video",
+            videoCategoryId: 10 // Music category
+        }).then((data) => {
+            console.debug(data);
+            resolve(data.results[0].link);
+        }, reject);
+    });
+}
+
+function sendPost(title, artist, album, desc, tags, videoURL) {
+    let caption = "";
+    caption += `<p><b>${title}</b> by <b>${artist}</b></p>\n`;
+    caption += `<p>from <i>${album}</i></p>\n`;
+    if (desc.length > 4) {
+        caption += `<p><blockquote>${desc.replace("\n\n", "<br>")}</blockquote></p>\n`
+    }
+    caption += `<p><a href="https://github.com/benpm/music-machine">[🎵]</a></p>`;
+
+    tumblr.postRequest(`blog/${KEYS.tumblr.blog_id}/post`, {
+        type: "video",
+        state: "queue",
+        tags: [title, artist] + tags + [album],
+        embed: videoURL,
+        caption
+    }).then(console.debug, console.error);
+}
+
+function pollPlaylist() {
+    spotify.getPlaylistTracks(KEYS.spotify.playlistID, {
+        limit: 200, offset: 0,
+        fields: "items(added_at,track(uri,name,artists(name),album(name),external_urls))"
+    }).then((data) => {
+        const items = data.body.items;
+        if (items.length > 0) {
+            // Remove the new songs
+            spotify.removeTracksFromPlaylist(KEYS.spotify.playlistID,
+                items.map((i) => {uri: i.track.uri})).catch(console.error);
+            // Get metadata for new songs
+            for (let i of items) {
+                let title = i.track.name;
+                let artist = i.track.artists[0].name;
+                Promise.all([
+                    getDescription(title, artist),
+                    getTags(title, artist),
+                    getVideo(title, aritst)
+                ]).then((r) => {
+                    console.debug(r);
+                    sendPost(title, artist, album, r[0], r[1], r[2]);
+                }, console.error);
             }
         }
-    };
+    }, console.error);
 }
 
-//Genius API search handlers
-function geniusSongInfo(index, json) {
-    let rawDesc = json.response.song.description.plain
-    if (rawDesc.length < 4 || !queue[index]) {
-        console.error("Genius song info failed");
-        return;
-    }
-    let desc = rawDesc.replace("\n\n", "<br>");
-    queue[index].description += `<blockquote>${desc}</blockquote>`;
-}
-function geniusSearch(index, json) {
-    if (json.response.hits.length == 0) {
-        console.error("ERROR GeniusSearch:", json.message);
-        sendIfReady(index);
-        return;
-    }
-    let songID = json.response.hits[0].result.id;
-    request.get(`https://api.genius.com/songs/${songID}?text_format=plain&` +
-        `access_token=${keys.genius}`,
-        wrapHandler(geniusSongInfo, index));
-}
-
-//Last.fm search handler
-function lastfmSearch(index, json) {
-    if (json["error"]) {
-        console.error("ERROR LastFM search:", json.message);
-        sendIfReady(index);
-        return;
-    }
-
-    //Add tags to the song info
-    for (const tagInfo of json.toptags.tag.slice(0, 4)) {
-        queue[index].genreTags.push(tagInfo.name);
-    }
-}
-
-//Main
 function main() {
-    //Express app
-    const app = express();
-
-    //Keep track of recent 10 posts
-    var recents = [];
-
-    //Setup the Express app
-    app.use(express.json());
-    app.use(express.static("public"));
-
-    //Respond to request for list of songs
-    app.get("/list", (req, res) => {
-        res.send(JSON.stringify(recents, null, 4));
-    });
-
-    //Receive POST requests from IFTTT
-    app.post("/", (req, res) => {
-        console.log(req.body);
-        recents.push(req.body);
-        if (recents.length > 10)
-            recents.shift();
-        res.send("ok");
-
-        //Workaround for result being empty for some reason
-        if (!req.body) {
-            return;
-        }
-
-        //Empty response - something is wrong
-        if (Object.keys(req.body).length == 0) {
-            console.log("received empty response from IFTTT!");
-            return;
-        }
-
-        //Populate song info object
-        queue[counter] = {
-            trackName: req.body["TrackName"],
-            artistName: req.body["ArtistName"],
-            trackURL: req.body["TrackURL"],
-            albumName: req.body["AlbumName"],
-            description: `<p><b>${req.body["TrackName"]}</b> by <b>${req.body["ArtistName"]}</b></p><p>From <i>${req.body["AlbumName"]}</i></p>`,
-            genreTags: [],
-            stepsRemaining: 3
-        };
-
-        //Search Genius for track info
-        let searchQuery = (req.body["TrackName"] + " " + req.body["ArtistName"].split(", ")[0]).replace(" ", "%20");
-        request.get(`https://api.genius.com/search?q=${searchQuery}&` +
-            `access_token=${keys.genius}`,
-            wrapHandler(geniusSearch, counter));
-
-        //Search Last.fm for genre tags
-        let searchTrack = req.body["TrackName"].replace(" ", "+").replace("&", "");
-        let searchArtist = req.body["ArtistName"].replace(" ", "+");
-        request.get(`http://ws.audioscrobbler.com/2.0/?method=track.gettoptags&artist=${searchArtist}&track=${searchTrack}&` +
-            `api_key=${keys.lastfm}&format=json`,
-            wrapHandler(lastfmSearch, counter));
-
-        //Increment
-        counter += 1;
-    });
-
-    //Start the server
-    app.listen(port);
+    setInterval(pollPlaylist, pollFreq);
 }
 
-//Check for keys
-if (keys["genius"] && keys["ifttt"] && keys["lastfm"]) {
-    main();
-    console.log("Serving on port", port);
-} else {
-    console.error("Missing valid keys! Add your API keys to keys.json");
-}
+main();
