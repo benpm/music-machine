@@ -5,7 +5,13 @@
   "main": "machine.js",
   "dependencies": {
     "express": "^4.17.1",
-    "request": "latest"
+    "genius-api": "latest",
+    "last-fm": "latest",
+    "prompt": "latest",
+    "request": "latest",
+    "spotify-web-api-node": "latest",
+    "tumblr.js": "latest",
+    "youtube-search": "latest"
   },
   "devDependencies": {},
   "scripts": {

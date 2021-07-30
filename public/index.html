@@ -12,6 +12,35 @@
         <h1>Music Machine</h1>
         <p>This is music machine! <a href="https://github.com/benpm/music-machine">I'm on GitHub.</a> 
         I am a bot for sharing music on Tumblr, using APIs from Genius and Last.fm</p>
+        <p id="key-label">Your Spotify API key is:</p>
+        <p id="key"></p>
     </div>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get("code");
+        if (code) {
+            document.getElementById("key").innerHTML = urlParams.get("code");
+        } else {
+            document.getElementById("key-label").remove();
+            document.getElementById("key").remove();
+        }
+    </script>
+    <style>
+        body {
+            font-family: sans-serif;
+        }
+        #key {
+            font-family: monospace;
+            color: white;
+            background: black;
+            word-wrap: break-word;
+            padding: 4px;
+            border-radius: 2px;
+        }
+        .content {
+            max-width: 800px;
+            margin: auto;
+        }
+    </style>
 </body>
 </html>

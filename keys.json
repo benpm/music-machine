@@ -1,5 +1,27 @@
 {
-    "ifttt": "",
-    "lastfm": "",
-    "genius": ""
+    "lastfm": {
+        "api_key": "",
+        "shared_secret": ""
+    },
+    "genius": {
+        "client_id": "",
+        "client_secret": "",
+        "client_access_token": ""
+    },
+    "tumblr": {
+        "consumer_key": "",
+        "consumer_secret": "",
+        "token": "",
+        "token_secret": "",
+        "blog_id": ""
+    },
+    "spotify": {
+        "clientId": "",
+        "clientSecret": "",
+        "redirectUri": "",
+        "playlistID": ""
+    },
+    "youtube": {
+        "api_key": ""
+    }
 }
