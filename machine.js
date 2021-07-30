@@ -16,7 +16,7 @@ const genius = new GeniusAPI(KEYS.genius.client_access_token);
 const lastfm = new LastFmAPI(KEYS.lastfm.api_key);
 
 // Frequency of polling for Spotify playlist changes
-const pollFreq = 60 * 1000;
+const pollFreq = 10 * 60 * 1000;
 
 function getDescription(title, artist) {
     return new Promise((resolve, reject) => {
@@ -74,13 +74,6 @@ function sendPost(title, artist, album, desc, tags, videoURL) {
     }
     caption += `<p><a href="https://github.com/benpm/music-machine">[🎵]</a></p>`;
 
-    /* return tumblr.postRequest(`blog/${KEYS.tumblr.blog_id}/post`, {
-        type: "video",
-        state: "queue",
-        tags: [title, artist] + tags + [album],
-        embed: videoURL,
-        caption
-    }); */
     return tumblr.createVideoPost(KEYS.tumblr.blog_id, {
         state: "queue",
         tags: ([title, artist].concat(tags, [album])).join(","),
@@ -91,7 +84,7 @@ function sendPost(title, artist, album, desc, tags, videoURL) {
 
 function pollPlaylist() {
     spotify.getPlaylistTracks(KEYS.spotify.playlistID, {
-        limit: 50, offset: 0,
+        limit: 5, offset: 0,
         fields: "items(added_at,track(uri,name,artists(name),album(name),external_urls))"
     }).then((data) => {
         const items = data.body.items;
@@ -114,6 +107,7 @@ function pollPlaylist() {
                             spotify.refreshAccessToken().then((r) => {
                                 spotify.setAccessToken(r.body.access_token);
                                 spotify.setRefreshToken(r.body.refresh_token);
+                                resolve();
                             }, reject);
                         }, reject);
                     }, reject);
@@ -138,7 +132,7 @@ function main() {
             console.trace(r.body);
             spotify.setAccessToken(r.body.access_token);
             spotify.setRefreshToken(r.body.refresh_token);
-            pollPlaylist();
+            setInterval(pollPlaylist, pollFreq);
         }, console.error);
     }, console.error);
 }
