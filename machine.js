@@ -103,12 +103,7 @@ function pollPlaylist() {
                         // Create Tumblr post
                         sendPost(title, artist, i.track.album.name, r[0], r[1], r[2]).then((r) => {
                             console.trace(r);
-                            // Refresh access token
-                            spotify.refreshAccessToken().then((r) => {
-                                spotify.setAccessToken(r.body.access_token);
-                                spotify.setRefreshToken(r.body.refresh_token);
-                                resolve();
-                            }, reject);
+                            resolve();
                         }, reject);
                     }, reject);
                 }
@@ -118,6 +113,15 @@ function pollPlaylist() {
                     items.map((i) => {return{uri: i.track.uri}})).then(console.trace, console.error);
             }, console.error);
         }
+    }, console.error);
+}
+
+function refreshTokens() {
+    // Refresh access token
+    spotify.refreshAccessToken().then((r) => {
+        spotify.setAccessToken(r.body.access_token);
+        spotify.setRefreshToken(r.body.refresh_token);
+        setTimeout((r.body.expires_in - 60) * 1000, refreshTokens());
     }, console.error);
 }
 
@@ -132,7 +136,9 @@ function main() {
             console.trace(r.body);
             spotify.setAccessToken(r.body.access_token);
             spotify.setRefreshToken(r.body.refresh_token);
+            pollPlaylist();
             setInterval(pollPlaylist, pollFreq);
+            setTimeout(refreshTokens, (r.body.expires_in - 60) * 1000);
         }, console.error);
     }, console.error);
 }
