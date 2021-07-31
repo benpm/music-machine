@@ -122,7 +122,7 @@ function refreshTokens() {
     spotify.refreshAccessToken().then((r) => {
         spotify.setAccessToken(r.body.access_token);
         spotify.setRefreshToken(r.body.refresh_token);
-        setTimeout((r.body.expires_in - 60) * 1000, refreshTokens);
+        setTimeout(refreshTokens, (r.body.expires_in - 60) * 1000);
     }, console.trace);
 }
 
