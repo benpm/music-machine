@@ -16,15 +16,14 @@ const genius = new GeniusAPI(KEYS.genius.client_access_token);
 const lastfm = new LastFmAPI(KEYS.lastfm.api_key);
 
 // Frequency of polling for Spotify playlist changes
-const pollFreq = 10 * 60 * 1000;
+const pollFreq = 45 * 60 * 1000;
 
 function getDescription(title, artist) {
     return new Promise((resolve, reject) => {
         genius.search(`${title} by ${artist}`).then((data) => {
-            console.trace(data);
             if (data.hits.length > 0) {
                 genius.song(data.hits[0].result.id, {text_format: "html"}).then((data) => {
-                    console.trace(data);
+                    console.log(`(${title} by ${artist}): got desc of length ${data.song.description.html.length}`);
                     resolve(data.song.description.html);
                 }, reject);
             } else {
@@ -40,9 +39,9 @@ function getTags(title, artist) {
             if (err) {
                 reject(err);
             } else {
-                console.trace(data);
                 if (data.tags) {
                     resolve(data.tags);
+                    console.log(`(${title} by ${artist}): got tags [${data.tags.join(", ")}]`);
                 } else {
                     resolve([]);
                 }
@@ -59,7 +58,7 @@ function getVideo(title, artist) {
             type: "video",
             videoCategoryId: 10 // Music category
         }).then((data) => {
-            console.trace(data);
+            console.log(`(${title} by ${artist}): got video ${data.results[0].link}`);
             resolve(data.results[0].link);
         }, reject);
     });
@@ -94,15 +93,16 @@ function pollPlaylist() {
                 for (let i of items) {
                     let title = i.track.name;
                     let artist = i.track.artists[0].name;
+                    console.log(`--> new spotify track: (${title} by ${artist})`);
                     Promise.all([
                         getDescription(title, artist),
                         getTags(title, artist),
                         getVideo(title, artist)
                     ]).then((r) => {
-                        console.trace(r);
+                        console.log(`(${title} by ${artist}): got all data`);
                         // Create Tumblr post
                         sendPost(title, artist, i.track.album.name, r[0], r[1], r[2]).then((r) => {
-                            console.trace(r);
+                            console.log(`(${title} by ${artist}): posted to tumblr`);
                             resolve();
                         }, reject);
                     }, reject);
@@ -110,10 +110,11 @@ function pollPlaylist() {
             }).then(() => {
                 // Remove the new songs
                 spotify.removeTracksFromPlaylist(KEYS.spotify.playlistID,
-                    items.map((i) => {return{uri: i.track.uri}})).then(console.trace, console.error);
-            }, console.error);
+                    items.map((i) => {return{uri: i.track.uri}})).then(
+                        () => console.log(`--> removed ${items.length} from playlist`), console.trace);
+            }, console.trace);
         }
-    }, console.error);
+    }, console.trace);
 }
 
 function refreshTokens() {
@@ -122,7 +123,7 @@ function refreshTokens() {
         spotify.setAccessToken(r.body.access_token);
         spotify.setRefreshToken(r.body.refresh_token);
         setTimeout((r.body.expires_in - 60) * 1000, refreshTokens);
-    }, console.error);
+    }, console.trace);
 }
 
 function main() {
@@ -133,14 +134,14 @@ function main() {
     prompt.start();
     prompt.get("access_code").then((i) => {
         spotify.authorizationCodeGrant(i.access_code).then((r) => {
-            console.trace(r.body);
+            console.log("code code grant from spotify");
             spotify.setAccessToken(r.body.access_token);
             spotify.setRefreshToken(r.body.refresh_token);
             pollPlaylist();
             setInterval(pollPlaylist, pollFreq);
             setTimeout(refreshTokens, (r.body.expires_in - 60) * 1000);
-        }, console.error);
-    }, console.error);
+        }, console.trace);
+    }, console.trace);
 }
 
 main();
