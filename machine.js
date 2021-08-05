@@ -120,9 +120,9 @@ function pollPlaylist() {
 function refreshTokens() {
     // Refresh access token
     spotify.refreshAccessToken().then((r) => {
+        console.log("--> refreshed spotify access token");
         spotify.setAccessToken(r.body.access_token);
-        spotify.setRefreshToken(r.body.refresh_token);
-        setTimeout(refreshTokens, (r.body.expires_in - 60) * 1000);
+        setTimeout(refreshTokens, (r.body.expires_in / 2) * 1000);
     }, console.trace);
 }
 
@@ -134,12 +134,11 @@ function main() {
     prompt.start();
     prompt.get("access_code").then((i) => {
         spotify.authorizationCodeGrant(i.access_code).then((r) => {
-            console.log("code code grant from spotify");
             spotify.setAccessToken(r.body.access_token);
             spotify.setRefreshToken(r.body.refresh_token);
             pollPlaylist();
             setInterval(pollPlaylist, pollFreq);
-            setTimeout(refreshTokens, (r.body.expires_in - 60) * 1000);
+            setTimeout(refreshTokens, (r.body.expires_in / 2) * 1000);
         }, console.trace);
     }, console.trace);
 }
