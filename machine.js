@@ -15,6 +15,12 @@ const spotify = new SpotifyAPI(KEYS.spotify);
 const genius = new GeniusAPI(KEYS.genius.client_access_token);
 const lastfm = new LastFmAPI(KEYS.lastfm.api_key);
 
+function handleError(response) {
+    console.error(response);
+    console.trace();
+    process.exit(1);
+}
+
 // Frequency of polling for Spotify playlist changes
 const pollFreq = 45 * 60 * 1000;
 
@@ -111,10 +117,10 @@ function pollPlaylist() {
                 // Remove the new songs
                 spotify.removeTracksFromPlaylist(KEYS.spotify.playlistID,
                     items.map((i) => {return{uri: i.track.uri}})).then(
-                        () => console.log(`--> removed ${items.length} from playlist`), console.trace);
-            }, console.trace);
+                        () => console.log(`--> removed ${items.length} from playlist`), handleError);
+            }, handleError);
         }
-    }, console.trace);
+    }, handleError);
 }
 
 function refreshTokens() {
@@ -123,7 +129,7 @@ function refreshTokens() {
         console.log("--> refreshed spotify access token");
         spotify.setAccessToken(r.body.access_token);
         setTimeout(refreshTokens, (r.body.expires_in / 2) * 1000);
-    }, console.trace);
+    }, handleError);
 }
 
 function main() {
@@ -139,8 +145,8 @@ function main() {
             pollPlaylist();
             setInterval(pollPlaylist, pollFreq);
             setTimeout(refreshTokens, (r.body.expires_in / 2) * 1000);
-        }, console.trace);
-    }, console.trace);
+        }, handleError);
+    }, handleError);
 }
 
 main();
