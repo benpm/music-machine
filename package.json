@@ -11,7 +11,8 @@
     "request": "latest",
     "spotify-web-api-node": "latest",
     "tumblr.js": "latest",
-    "youtube-search": "latest"
+    "youtube-search": "latest",
+    "node-file-cache": "latest"
   },
   "devDependencies": {},
   "scripts": {

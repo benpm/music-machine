@@ -10,15 +10,29 @@ const LastFmAPI = require("last-fm");
 const youtube = require("youtube-search");
 const prompt = require("prompt");
 
+// Check that config is popualated
+for (let serviceKey of Object.keys(KEYS)) {
+    for (let key of Object.keys(KEYS[serviceKey])) {
+        if (!KEYS[serviceKey][key]) {
+            console.error(
+                `config item ${serviceKey}.${key} is not set!` +
+                ` make sure to populate everything in keys.json!`);
+            process.exit(1);
+        }
+    }
+}
+
 const tumblr = TumblrAPI.createClient({credentials: KEYS.tumblr, returnPromises: true});
 const spotify = new SpotifyAPI(KEYS.spotify);
 const genius = new GeniusAPI(KEYS.genius.client_access_token);
 const lastfm = new LastFmAPI(KEYS.lastfm.api_key);
 
+const cache = require("node-file-cache").create();
+
 function handleError(response) {
     console.error(response);
     console.trace();
-    process.exit(1);
+    throw Error();
 }
 
 // Frequency of polling for Spotify playlist changes
@@ -77,7 +91,7 @@ function sendPost(title, artist, album, desc, tags, videoURL) {
     if (desc.length > 9) {
         caption += `<p><blockquote>${desc.replace("\n\n", "<br>")}</blockquote></p>\n`
     }
-    caption += `<p><a href="https://github.com/benpm/music-machine">[🎵]</a></p>`;
+    caption += `<p style="text-align: right;"><a href="https://github.com/benpm/music-machine">[🎵]</a></p>`;
 
     return tumblr.createVideoPost(KEYS.tumblr.blog_id, {
         state: "queue",
@@ -123,30 +137,56 @@ function pollPlaylist() {
     }, handleError);
 }
 
-function refreshTokens() {
+function refreshTokens(handler = handleError) {
     // Refresh access token
-    spotify.refreshAccessToken().then((r) => {
+    return spotify.refreshAccessToken().then((r) => {
         console.log("--> refreshed spotify access token");
         spotify.setAccessToken(r.body.access_token);
+        cache.set("access_token", r.body.access_token);
         setTimeout(refreshTokens, (r.body.expires_in / 2) * 1000);
-    }, handleError);
+    }, handler);
 }
 
-function main() {
+function spotifyRequestOAuth() {
     let authURl = spotify.createAuthorizeURL(
         ["playlist-modify-public", "playlist-modify-private", "playlist-read-private"],
         "music-machine");
+    console.log("--> visit the following URL then copy the access code below");
     console.log(authURl);
     prompt.start();
     prompt.get("access_code").then((i) => {
         spotify.authorizationCodeGrant(i.access_code).then((r) => {
+            console.log("--> got spotify access token");
             spotify.setAccessToken(r.body.access_token);
+            cache.set("access_token", r.body.access_token);
             spotify.setRefreshToken(r.body.refresh_token);
+            cache.set("refresh_token", r.body.refresh_token);
             pollPlaylist();
             setInterval(pollPlaylist, pollFreq);
             setTimeout(refreshTokens, (r.body.expires_in / 2) * 1000);
         }, handleError);
     }, handleError);
+}
+
+function main() {
+    if (cache.get("access_token") && cache.get("refresh_token")) {
+        console.log("--> attempting spotify login with cached tokens");
+        spotify.setAccessToken(cache.get("access_token"));
+        spotify.setRefreshToken(cache.get("refresh_token"));
+        refreshTokens(console.warn).then(
+            () => {
+                console.log("--> it worked!");
+                pollPlaylist();
+                setInterval(pollPlaylist, pollFreq);
+            },
+            () => {
+                console.log("--> failed log in with cached tokens");
+                spotifyRequestOAuth();
+            }
+        )
+    } else {
+        spotifyRequestOAuth();
+    }
 }
 
 main();
