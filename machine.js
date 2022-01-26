@@ -143,7 +143,7 @@ function refreshTokens(handler = handleError) {
         console.log("--> refreshed spotify access token");
         spotify.setAccessToken(r.body.access_token);
         cache.set("access_token", r.body.access_token);
-        setTimeout(refreshTokens, (r.body.expires_in / 2) * 1000);
+        cache.set("expires_in", r.body.expires_in);
     }, handler);
 }
 
@@ -161,9 +161,10 @@ function spotifyRequestOAuth() {
             cache.set("access_token", r.body.access_token);
             spotify.setRefreshToken(r.body.refresh_token);
             cache.set("refresh_token", r.body.refresh_token);
+            cache.set("expires_in", r.body.expires_in);
             pollPlaylist();
             setInterval(pollPlaylist, pollFreq);
-            setTimeout(refreshTokens, (r.body.expires_in / 2) * 1000);
+            setInterval(refreshTokens, (r.body.expires_in / 2) * 1000);
         }, handleError);
     }, handleError);
 }
@@ -174,10 +175,11 @@ function main() {
         spotify.setAccessToken(cache.get("access_token"));
         spotify.setRefreshToken(cache.get("refresh_token"));
         refreshTokens(console.warn).then(
-            () => {
+            (r) => {
                 console.log("--> it worked!");
                 pollPlaylist();
                 setInterval(pollPlaylist, pollFreq);
+                setInterval(refreshTokens, (cache.get("expires_in") / 2) * 1000);
             },
             () => {
                 console.log("--> failed log in with cached tokens");
